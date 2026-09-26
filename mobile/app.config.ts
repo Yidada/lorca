@@ -5,8 +5,10 @@ export default (): ExpoConfig => {
     process.env.LORCA_MOBILE_VARIANT === "development" ||
     process.env.EAS_BUILD_PROFILE === "development";
   const appName = development ? "Lorca Dev" : "Lorca";
+  // `app.lorca` belongs to another Apple team, so the iPhone app has its own ids under team 9247PC9936.
   const appId = development ? "app.lorca.dev" : "app.lorca";
-  const appGroup = development ? "group.app.lorca.dev" : "group.app.lorca";
+  const iosAppId = development ? "com.benjaming.lorca.dev" : "com.benjaming.lorca";
+  const appGroup = `group.${iosAppId}`;
   const icon = development ? "./assets/icon-dev.png" : "./assets/icon.png";
   const splash = development ? "./assets/splash-icon-dev.png" : "./assets/splash-icon.png";
   const favicon = development ? "./assets/favicon-dev.png" : "./assets/favicon.png";
@@ -23,7 +25,7 @@ export default (): ExpoConfig => {
     icon,
     userInterfaceStyle: "automatic",
     ios: {
-      bundleIdentifier: appId,
+      bundleIdentifier: iosAppId,
       supportsTablet: true,
       infoPlist: {
         NSCameraUsageDescription: "Lorca scans a pairing QR code from another Device.",
@@ -31,6 +33,8 @@ export default (): ExpoConfig => {
         NSSpeechRecognitionUsageDescription: "Lorca turns what you say into the message text.",
         NSPhotoLibraryUsageDescription: "Lorca attaches photos you pick to a message.",
         CFBundleAllowMixedLocalizations: true,
+        // The end-to-end encryption uses only standard, published algorithms: exempt from export filings.
+        ITSAppUsesNonExemptEncryption: false,
       },
       // scripts/release-ios.ts sets a fresh one for every upload; the notify extension takes the
       // same number through CURRENT_PROJECT_VERSION.
@@ -38,7 +42,7 @@ export default (): ExpoConfig => {
       entitlements: {
         "com.apple.security.application-groups": [appGroup],
       },
-      appleTeamId: "GJE9R5VE87",
+      appleTeamId: "9247PC9936",
     },
     android: {
       package: appId,

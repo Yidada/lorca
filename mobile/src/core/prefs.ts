@@ -12,7 +12,7 @@ export interface Prefs {
 }
 
 function root(): Directory {
-  const dir = new Directory(Paths.document, Application.applicationId === "app.lorca.dev" ? "lorca-dev" : "lorca");
+  const dir = new Directory(Paths.document, Application.applicationId?.endsWith(".dev") ? "lorca-dev" : "lorca");
   if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
   return dir;
 }

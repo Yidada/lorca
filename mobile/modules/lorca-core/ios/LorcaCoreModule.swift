@@ -21,7 +21,7 @@ public class LorcaCoreModule: Module {
   /// which runs outside the app and opens a push's ciphertext before the alert shows
   /// (`targets/notify`). Removed when this phone holds no account.
   fileprivate func sharePushKey() {
-    let group = Bundle.main.bundleIdentifier == "app.lorca.dev" ? "group.app.lorca.dev" : "group.app.lorca"
+    let group = "group." + (Bundle.main.bundleIdentifier ?? "")
     let item: [CFString: Any] = [
       kSecClass: kSecClassGenericPassword,
       kSecAttrService: group,
