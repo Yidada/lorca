@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { chatTitle, engine } from "../../src/core/engine";
+import { ClaudeSettings } from "../../src/ui/ClaudeSettings";
 import { CodexSettings } from "../../src/ui/CodexSettings";
 import { providerLabel, PROVIDER_KINDS, PROVIDER_MODELS, THINKING_LEVELS, thinkingLabel, type Bot, type Routine } from "../../src/core/model";
 import { deviceIsOnline, useBotMap, useChat, useRoutines, useStore, useWorkingBotIds } from "../../src/core/store";
@@ -129,16 +130,17 @@ export default function ChatInfoScreen() {
       {bot && (
         <Section title={t("Runs with")}>
           <Row title={t("Runtime")} menu={{
-            title: t("Runtime"), value: bot.harness === "codex" ? "Codex" : "Lorca",
-            choices: (["lorca", "codex"] as const).map((harness) => ({
-              title: harness === "codex" ? "Codex" : "Lorca",
+            title: t("Runtime"), value: bot.harness === "claude" ? "Claude" : bot.harness === "codex" ? "Codex" : "Lorca",
+            choices: (["lorca", "codex", "claude"] as const).map((harness) => ({
+              title: harness === "claude" ? "Claude" : harness === "codex" ? "Codex" : "Lorca",
               selected: (bot.harness ?? "lorca") === harness,
               onPress: () => { void engine.setBotHarness(bot.id, harness).catch((error) => Alert.alert(t("Could not update the bot"), String(error))); },
             })),
           }} />
           {bot.harness === "codex" ? <CodexSettings runnerId={bot.runner_id} botId={bot.id}
             selection={{ model: bot.model, thinking: bot.thinking, options: bot.codex_options ?? { speed: "default", approvals: "auto_review" } }}
-            onChange={(selection) => engine.setCodexOptions(bot.id, selection)} /> : <>
+            onChange={(selection) => engine.setCodexOptions(bot.id, selection)} /> : bot.harness === "claude" ? <ClaudeSettings
+            selection={{ model: bot.model, thinking: bot.thinking }} onChange={(selection) => engine.setClaudeOptions(bot.id, selection)} /> : <>
           <Row
             title={t("Provider")}
             menu={{
@@ -253,7 +255,7 @@ export default function ChatInfoScreen() {
             <Row
               key={member.id}
               title={member.name}
-              subtitle={member.harness === "codex" ? "Codex" : providerLabel(member.provider)}
+              subtitle={member.harness === "claude" ? "Claude" : member.harness === "codex" ? "Codex" : providerLabel(member.provider)}
               leading={<BotAvatar bot={member} size={36} working={working.has(member.id)} />}
               accessory={
                 chat.owner_bot_id === member.id ? (

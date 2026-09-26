@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { LinearGradient } from "expo-linear-gradient";
 import { engine } from "../src/core/engine";
 import type { CodexSelection } from "../src/core/model";
+import { ClaudeSettings, type ClaudeSelection } from "../src/ui/ClaudeSettings";
 import { CodexSettings } from "../src/ui/CodexSettings";
 import { connectedProviders, isRunner, providerLabel, PROVIDER_MODELS, THINKING_LEVELS, thinkingLabel } from "../src/core/model";
 import { deviceIsOnline, useStore } from "../src/core/store";
@@ -22,7 +23,8 @@ export default function NewBotScreen() {
   const runners = useMemo(() => devices.filter(isRunner), [devices]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [harness, setHarness] = useState<"lorca" | "codex">("lorca");
+  const [harness, setHarness] = useState<"lorca" | "codex" | "claude">("lorca");
+  const [claude, setClaude] = useState<ClaudeSelection>({});
   const [codex, setCodex] = useState<CodexSelection>({ options: { speed: "default", approvals: "auto_review" } });
   const [symbol, setSymbol] = useState("sparkles");
   const [accent, setAccent] = useState("indigo");
@@ -39,7 +41,7 @@ export default function NewBotScreen() {
   async function save() {
     try {
       const { chatId } = await engine.createBot({ name, description, symbol_name: symbol, accent, runner_id: runnerId, provider: effectiveProvider, harness,
-        codex_options: codex.options, model: harness === "codex" ? codex.model : model, thinking: harness === "codex" ? codex.thinking : thinking });
+        codex_options: codex.options, model: harness === "codex" ? codex.model : harness === "claude" ? claude.model : model, thinking: harness === "codex" ? codex.thinking : harness === "claude" ? claude.thinking : thinking });
       router.dismiss();
       router.push(`/chat/${chatId}`);
     } catch (error) {
@@ -94,8 +96,10 @@ export default function NewBotScreen() {
         <Section title={t("Runtime")} footer={harness === "codex" ? t("Uses Codex's login, model, tools, and permissions on this Runner. Install Codex and run codex login there first.") : undefined}>
           <CheckRow title="Lorca" checked={harness === "lorca"} onPress={() => setHarness("lorca")} />
           <CheckRow title="Codex" checked={harness === "codex"} onPress={() => setHarness("codex")} />
+          <CheckRow title="Claude" checked={harness === "claude"} onPress={() => setHarness("claude")} />
         </Section>
         {runner && harness === "codex" && <Section title="Codex"><CodexSettings runnerId={runner.id} selection={codex} onChange={setCodex} /></Section>}
+        {runner && harness === "claude" && <Section title="Claude"><ClaudeSettings selection={claude} onChange={setClaude} /></Section>}
         {runner && harness === "lorca" && (
           <Section title={t("Provider")} footer={connected.length ? undefined : t("No provider is connected yet; connect one in Settings before this bot answers.")}>
             {providers.map((kind) => (

@@ -104,8 +104,9 @@ pub async fn review(app: &Arc<App>, bot: &Bot, chat_id: &str, trigger: &Trigger,
     if !auto_review.is_enabled {
         return Outcome::Ask { reason: None, rule: None };
     }
-    if bot.harness == crate::model::Harness::Codex {
-        return Outcome::ask("Approve this Lorca plugin action. Codex runs this bot; provider-based Auto-review is unavailable.");
+    if bot.harness != crate::model::Harness::Lorca {
+        let runtime = if bot.harness == crate::model::Harness::Claude { "Claude" } else { "Codex" };
+        return Outcome::ask(format!("Approve this Lorca plugin action. {runtime} runs this bot; provider-based Auto-review is unavailable."));
     }
     let (model, thinking) = crate::providers::review_model(&bot.provider);
     let provider = match crate::providers::provider_for(app, &bot.provider, Some(model), Some(thinking)) {

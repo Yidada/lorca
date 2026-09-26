@@ -32,6 +32,8 @@ use crate::providers;
 use crate::runtime::{chat_source, name_of, prime_names, start_turn, TurnOutcome};
 
 pub(crate) mod codex;
+mod claude;
+mod native;
 
 /// The most chat messages a turn rebuilds as they are. Past this a chat is compacted by count,
 /// so nothing is dropped without a summary; with compaction off, older rows are left out.
@@ -92,6 +94,15 @@ pub(crate) async fn run_job(app: &Arc<App>, job: &Job, cancel: CancellationToken
         None => None,
     };
 
+    if bot.harness != Harness::Claude {
+        if let Err(error) = app.store.clear_claude_sessions(&job.chat_id, &bot.id) {
+            tracing::warn!(%error, "clearing the previous Claude session association");
+        }
+    }
+    if bot.harness == Harness::Claude {
+        let _ = app.store.clear_codex_sessions(&job.chat_id, &bot.id);
+        return claude::run(app, job, &bot, routine.as_ref(), &trigger, cancel).await;
+    }
     if bot.harness == Harness::Codex {
         return codex::run(app, job, &bot, routine.as_ref(), &trigger, cancel).await;
     }
@@ -614,8 +625,8 @@ pub async fn compact_now(app: &Arc<App>, chat_id: &str, bot_id: Option<&str>) ->
         .or_else(|| chat.meta.bot_ids.first().cloned())
         .ok_or("The chat has no bot")?;
     let bot = app.bot(&bot_id).ok_or("Unknown bot")?;
-    if bot.harness == Harness::Codex {
-        return Err("Codex manages this bot's context automatically".into());
+    if bot.harness != Harness::Lorca {
+        return Err("This runtime manages the bot's context automatically".into());
     }
     if app.this_device_id().as_deref() != Some(bot.runner_id.as_str()) {
         return Err(format!("{} runs on another Runner; compact it there", bot.name));
@@ -1305,6 +1316,10 @@ fn system_prompt(app: &Arc<App>, chat: &Chat, bot: &Bot, job: &Job, store: &Memo
          the answer; headings are for long reports the user asked for. Ask one question when something is unclear. \
          Markdown renders. Do not invent APIs, files, or results.\n",
     );
+    if bot.harness == Harness::Claude {
+        prompt.push_str("\nClaude provides your native tools, skills, MCP connections, and session context. Call mcp__lorca__lorca_call for Lorca team, memory, routine, and discovered plugin tools. Call it with tool=catalog for current schemas. Follow Claude's native permission rules. Questions can be asked in chat; incoming user messages run in the next turn.\n");
+        return prompt;
+    }
     if bot.harness == Harness::Codex {
         prompt.push_str("\nCodex provides your coding tools, sandbox, skills, and MCP connections. Use lorca_call for Lorca team, memory, routine, and plugin tools. Its catalog names their arguments. After capability_search, pass a selected plugin tool's name and arguments to lorca_call. Follow Codex's tool and approval instructions.\n");
         return prompt;

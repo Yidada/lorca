@@ -60,6 +60,7 @@ final class OnboardingViewController: NSViewController {
     private var providerKind: ProviderCredential.Kind = .deepseek
     private var harnessKind: Bot.Harness = .lorca
     private var codexSelection = CodexSelection()
+    private var claudeSelection = ClaudeSelection()
 
     init(onFinish: @escaping () -> Void) {
         self.onFinish = onFinish
@@ -376,7 +377,19 @@ final class OnboardingViewController: NSViewController {
         guard let host = credentialHost else { return }
         for subview in host.subviews { subview.removeFromSuperview() }
         let usesCodex = step == .bot && harnessKind == .codex
-        providerRow?.isHidden = usesCodex
+        let usesClaude = step == .bot && harnessKind == .claude
+        providerRow?.isHidden = usesCodex || usesClaude
+        if usesClaude {
+            let settings = ClaudeSettingsView(selection: claudeSelection)
+            settings.onChange = { [weak self] in self?.claudeSelection = $0 }
+            host.addSubview(settings)
+            settings.pin(to: host)
+            credentialLabel?.stringValue = ""
+            setStatus("", color: .tertiaryLabelColor)
+            findContinueButton()?.title = L("Continue")
+            findContinueButton()?.isEnabled = true
+            return
+        }
 
         if usesCodex {
             if let bot = firstBot {
@@ -616,6 +629,7 @@ final class OnboardingViewController: NSViewController {
         codexSelection = .init(model: harnessKind == .codex ? firstBot?.model : nil,
                                thinking: harnessKind == .codex ? firstBot?.thinking : nil,
                                options: firstBot?.codexOptions ?? .init())
+        claudeSelection = .init(model: harnessKind == .claude ? firstBot?.model : nil, thinking: harnessKind == .claude ? firstBot?.thinking : nil)
         transition(to: firstBot == nil ? .provider : .bot)
     }
 
@@ -647,6 +661,11 @@ final class OnboardingViewController: NSViewController {
         store.setBotHarness(bot.id, harness: harnessKind)
         if harnessKind == .codex {
             store.setCodexOptions(bot.id, selection: codexSelection)
+            transition(to: .done)
+            return
+        }
+        if harnessKind == .claude {
+            store.setClaudeOptions(bot.id, selection: claudeSelection)
             transition(to: .done)
             return
         }

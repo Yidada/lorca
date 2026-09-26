@@ -1,6 +1,8 @@
 // Simplified Chinese. The key is the English text passed to t(); `bun run l10n` checks this table.
 
 export const zh: Record<string, string> = {
+  "Runner default": "Runner 默认设置",
+  "Uses Claude Code on this Runner. Sign in there first. Available models and thinking levels depend on its version and account.": "使用此 Runner 上的 Claude Code，请先在那里登录。可用模型和思考级别取决于其版本及账号。",
   "{count} bot": "{count} 个智能体",
   "{count} bots": "{count} 个智能体",
   "{count} files": "{count} 个文件",

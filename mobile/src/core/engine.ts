@@ -260,7 +260,7 @@ class Engine {
     }
   }
 
-  async createBot(input: { name: string; description: string; symbol_name: string; accent: string; runner_id: string; provider: string; harness?: "lorca" | "codex"; codex_options?: CodexOptions; model?: string; thinking?: string }): Promise<{ bot: Bot; chatId: string }> {
+  async createBot(input: { name: string; description: string; symbol_name: string; accent: string; runner_id: string; provider: string; harness?: "lorca" | "codex" | "claude"; codex_options?: CodexOptions; model?: string; thinking?: string }): Promise<{ bot: Bot; chatId: string }> {
     const { bot, chat_id } = await core.request<{ bot: Bot; chat_id: string }>("bots.create", input);
     return { bot, chatId: chat_id };
   }
@@ -284,13 +284,18 @@ class Engine {
     });
   }
 
-  async setBotHarness(id: string, harness: "lorca" | "codex"): Promise<void> {
+  async setBotHarness(id: string, harness: "lorca" | "codex" | "claude"): Promise<void> {
     const { bot } = await core.request<{ bot: Bot }>("bots.update", { id, harness, model: "", thinking: "" });
     useStore.setState((s) => ({ bots: s.bots.map((current) => current.id === id ? bot : current) }));
   }
 
   async codexModels(runnerId: string, botId?: string): Promise<CodexCatalog> {
     return core.request<CodexCatalog>("codex.models", { runner_id: runnerId, bot_id: botId });
+  }
+
+  async setClaudeOptions(id: string, selection: { model?: string; thinking?: string }): Promise<void> {
+    const { bot } = await core.request<{ bot: Bot }>("bots.update", { id, model: selection.model ?? "", thinking: selection.thinking ?? "" });
+    useStore.setState((s) => ({ bots: s.bots.map((current) => current.id === id ? bot : current) }));
   }
 
   async setCodexOptions(id: string, selection: CodexSelection): Promise<void> {

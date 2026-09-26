@@ -357,6 +357,13 @@ final class InspectorViewController: NSViewController {
             settings.onChange = { [weak self] selection in self?.store.setCodexOptions(bot.id, selection: selection) }
             return [harnessRow, settings]
         }
+        if bot.harness == .claude {
+            contextRow = nil
+            spentRow = nil
+            let settings = ClaudeSettingsView(selection: .init(model: bot.model, thinking: bot.thinking))
+            settings.onChange = { [weak self] selection in self?.store.setClaudeOptions(bot.id, selection: selection) }
+            return [harnessRow, settings]
+        }
         let kinds = ProviderCredential.Kind.allCases
         let providerRow = PopUpRow(
             key: L("Provider"),

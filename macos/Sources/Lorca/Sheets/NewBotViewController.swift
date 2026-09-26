@@ -26,6 +26,8 @@ final class NewBotViewController: SheetViewController {
     private let codexHost = Build.stack([], spacing: 0)
     private var codexRunnerID: Device.ID?
     private var codexSelection = CodexSelection()
+    private var claudeSelection = ClaudeSelection()
+    private let claudeHost = Build.stack([], spacing: 0)
     private let modelPopup = NSPopUpButton()
     private let thinkingPopup = NSPopUpButton()
     private let lookRow = Build.stack([], orientation: .horizontal, spacing: 8)
@@ -98,6 +100,7 @@ final class NewBotViewController: SheetViewController {
             labeled(L("Model"), modelPopup),
             labeled(L("Thinking"), thinkingPopup),
             codexHost,
+            claudeHost,
             note,
         ]
         // Width constraints need a common ancestor, so they go on after each row joins the stack.
@@ -109,6 +112,11 @@ final class NewBotViewController: SheetViewController {
         setButtons(confirm: L("Create Bot"))
         confirmButton.isEnabled = false
         codexHost.isHidden = true
+        claudeHost.isHidden = true
+        let claude = ClaudeSettingsView()
+        claude.onChange = { [weak self] in self?.claudeSelection = $0 }
+        claudeHost.addArrangedSubview(claude)
+        claude.widthAnchor.constraint(equalTo: claudeHost.widthAnchor).isActive = true
         runnerChanged()
     }
 
@@ -233,6 +241,10 @@ final class NewBotViewController: SheetViewController {
             note.textColor = .tertiaryLabelColor
             return
         }
+        if selectedHarness == .claude {
+            note.stringValue = ""
+            return
+        }
         let provider = selectedProvider
         if store.credential(for: provider)?.isConnected == true {
             note.stringValue = L("%@ is connected. Turns run on %@.", provider.rawValue, runner.name)
@@ -259,18 +271,19 @@ final class NewBotViewController: SheetViewController {
             provider: selectedProvider,
             harness: selectedHarness,
             codexOptions: codexSelection.options,
-            model: selectedHarness == .codex ? codexSelection.model : selectedModel,
-            thinking: selectedHarness == .codex ? codexSelection.thinking : selectedThinking
+            model: selectedHarness == .codex ? codexSelection.model : selectedHarness == .claude ? claudeSelection.model : selectedModel,
+            thinking: selectedHarness == .codex ? codexSelection.thinking : selectedHarness == .claude ? claudeSelection.thinking : selectedThinking
         )
         dismiss(nil)
         onCreate(botID)
     }
 
-    private var selectedHarness: Bot.Harness { harnessPopup.indexOfSelectedItem == 1 ? .codex : .lorca }
+    private var selectedHarness: Bot.Harness { Bot.Harness.allCases[max(0, harnessPopup.indexOfSelectedItem)] }
 
     @objc private func harnessChanged() {
-        for control in [providerPopup, modelPopup, thinkingPopup] { control.superview?.isHidden = selectedHarness == .codex }
+        for control in [providerPopup, modelPopup, thinkingPopup] { control.superview?.isHidden = selectedHarness != .lorca }
         codexHost.isHidden = selectedHarness != .codex
+        claudeHost.isHidden = selectedHarness != .claude
         runnerChanged()
     }
 }

@@ -67,6 +67,7 @@ pub enum Harness {
     #[default]
     Lorca,
     Codex,
+    Claude,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]

@@ -10,10 +10,10 @@ Identity is a **key pair**. Devices pair. The relay stores public keys and ciphe
 
 1. **The app speaks only to the local CLI** over localhost websocket. The app ships the CLI binary inside its bundle and starts `lorca serve` itself, unless one already answers on the port. The CLI holds keys, talks to the relay, and talks to models.
 2. **The UI is AppKit** (SPM): system materials, SF Symbols, Auto Layout, keyboard, accessibility.
-3. **The CLI routes bot turns to their harness.** The Lorca harness owns inference and tools in Rust. The Codex harness runs through a local `codex app-server`; Codex owns inference, tools, context, and sandbox policy. The CLI delivers both harnesses' progress and results to Devices.
+3. **The CLI routes bot turns to their harness.** The Lorca harness owns inference and tools in Rust. The Codex harness runs through a local `codex app-server`; Codex owns inference, tools, context, and sandbox policy. The Claude harness runs Claude Code through its bidirectional stream-JSON CLI. The CLI delivers each harness's progress and results to Devices.
 4. **The relay is zero-knowledge:** opaque blobs and public keys. Auth is a signature challenge.
 5. **Every Device records its `os`.** A Device with a desktop `os` (`macos`, `linux`, `windows`) is a **Runner**. Phones and tablets (`ios`, `ipados`, `android`) are Devices, never Runners.
-6. **Provider credentials belong to the account.** API keys and ChatGPT and Grok tokens are connected once, on any Device, and reach every paired Device as a `credentials` blob encrypted with the account DEK. A Lorca-harness bot uses them on its assigned Runner. Codex-harness bots use that Runner's Codex login and configuration.
+6. **Provider credentials belong to the account.** API keys and ChatGPT and Grok tokens are connected once, on any Device, and reach every paired Device as a `credentials` blob encrypted with the account DEK. A Lorca-harness bot uses them on its assigned Runner. Native-harness bots use their Runner's Codex or Claude Code login and configuration.
 7. **A bot runs on one Runner:** that Device’s CLI.
 
 ## Three processes
@@ -262,7 +262,7 @@ A computer without the app installs `lorca` with `curl -fsSL https://lorca.app/i
 
 ### Agent loop
 
-A bot's `harness` is `lorca` or `codex`, with `lorca` as the default for profiles that omit it. The macOS New Bot sheet and inspector and the phone's New Bot and Details screens offer Runtime. Choosing Codex uses the assigned Runner's Codex installation, login, tools, and sandbox. The apps expose its available models, thinking levels, speed tiers, and approval reviewer. Model and thinking overrides are cleared when changing Runtime in the apps; the JSON API also accepts explicit `model` and `thinking` for a Codex bot. Provider selection applies to the Lorca harness.
+A bot's `harness` is `lorca`, `codex`, or `claude`, with `lorca` as the default for profiles that omit it. The macOS New Bot sheet and inspector and the phone's New Bot and Details screens offer Runtime. Choosing Codex uses the assigned Runner's Codex installation, login, tools, and sandbox. The apps expose its available models, thinking levels, speed tiers, and approval reviewer. Model and thinking overrides are cleared when changing Runtime in the apps; the JSON API also accepts explicit `model` and `thinking` for a native-harness bot. Claude offers Runner default and CLI model aliases, with optional thinking effort. Provider selection applies to the Lorca harness.
 
 ### Codex harness
 
@@ -275,6 +275,18 @@ Agent text and command, file, search, MCP, and compaction activity become Lorca 
 Lorca supplies the bot's description, team and routine context, memory, and a `lorca_call` dynamic tool. That tool exposes the existing team, memory, routine, and plugin-discovery capabilities; selected plugin tools run through their existing permission boundary. Codex's native coding tools, skills, and MCP configuration run inside Codex. Dynamic tools require the App Server experimental API; the adapter is checked against Codex CLI 0.154.0.
 
 Codex defaults to Approve for me (`approvalPolicy: on-request`, `approvalsReviewer: auto_review`). Ask me uses the `user` reviewer; command and file requests routed to the user use Lorca permission cards, answerable from paired Devices. Fast requests `serviceTierForTurn: priority`; Standard requests `default`. Model and thinking choices come from the Runner's current catalog. A routine declines a request requiring user approval. Lorca plugin actions use existing exact-tool rules or ask the user; provider-based Auto-review runs for Lorca bots. Additional Codex permission-profile grants are declined. Structured Codex questions appear in the chat and interrupt the turn so the user can reply in the composer. Unknown server requests receive an explicit unsupported-method error.
+
+### Claude harness
+
+`crates/cli/src/turns/claude.rs` starts `claude -p` with bidirectional `stream-json`, partial events, user-message acknowledgements, and the SDK control protocol. `transport.rs` reads stdout, writes stdin, and drains stderr independently so startup MCP requests and large input cannot block each other. Frames and captured diagnostics are bounded. `LORCA_CLAUDE_BIN` selects the executable; otherwise the Runner's login-shell PATH supplies `claude`. The Runner installs Claude Code and signs in there. Native configuration, CLAUDE.md, skills, hooks, and MCP servers load normally. Lorca adds its instructions with a private temporary `--append-system-prompt-file` and supplies no Lorca provider credentials.
+
+The `claude_sessions` table binds `(chat_id, bot_id, canonical_workdir)` to a native UUID and the last accepted Lorca message. A first turn uses `--session-id`; later turns use `--resume` and send only new chat input, excluding this bot's own projected replies. Acknowledged input advances the cursor even if later execution fails. Session ID mismatches, startup failures, and missing resume history produce visible failures. A new Runner, workspace, or chat starts with recent Lorca context. Switching to another runtime clears the local association on its next turn. Chat deletion and identity reset clear associations; Claude keeps its native transcript files.
+
+`output.rs` projects root text and native tool activity into ordinary Lorca messages, deduplicates partial and complete text, and keeps subagent text out of the parent chat. Claude owns model requests, context compaction, and retries. Model aliases (`opus`, `sonnet`, `haiku`) resolve on the Runner; model and effort availability depend on its CLI version and account. Default omits the override on each new process. Native usage is not charged through Lorca's provider cost tables.
+
+The in-process SDK MCP server exposes `mcp__lorca__lorca_call`. `turns/native.rs` shares the team, memory, routine, discovery, and selected-plugin dispatch with Codex. Claude's native permission mode is `default`. Requests the CLI routes to `can_use_tool` appear as Lorca permission cards; existing native allow rules still apply. Inner Lorca plugin calls retain their existing exact-tool permission rules, and provider-based Auto-review is unavailable for native bots. Scheduled turns decline actions that need a user. `AskUserQuestion` posts the questions in chat and interrupts for a reply on the next turn. Unknown control requests receive errors.
+
+Each Lorca job owns one Claude process. Stop sends the SDK interrupt control, closes pending permission cards, then closes stdin and terminates the owned process tree (Unix process group; Windows `taskkill /T`). `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps native Bash and subagents in the foreground, so work finishes within that job. Messages arriving during execution remain queued for the next resumed turn. The adapter's protocol and live smoke test are checked against Claude Code 2.1.220. [Claude runtime setup and validation](./docs/claude-harness.md) describes the operating boundary.
 
 ### Lorca harness
 
