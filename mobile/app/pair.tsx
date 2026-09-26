@@ -15,7 +15,7 @@ import { Symbol } from "../src/ui/Symbol";
 import { Font, usePalette } from "../src/ui/theme";
 
 type Phase = "idle" | "posting" | "waiting";
-const appIcon = Application.applicationId === "app.lorca.dev" ? require("../assets/icon-dev.png") : require("../assets/icon.png");
+const appIcon = Application.applicationId?.endsWith(".dev") ? require("../assets/icon-dev.png") : require("../assets/icon.png");
 
 export default function PairScreen() {
   useLanguage();

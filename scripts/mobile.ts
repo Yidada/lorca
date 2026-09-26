@@ -16,7 +16,7 @@ const MODULE = join(MOBILE, "modules", "lorca-core")
 const STAMPS = join(MOBILE, ".expo", "dev-stamps.json")
 const METRO_PORT = 8081
 const DEBOUNCE_MS = 500
-const APP_ID = "app.lorca.dev"
+const APP_ID = "com.benjaming.lorca.dev"
 // CocoaPods dies on a non-UTF-8 locale, and the CommandLineTools SDK breaks the pod install
 // and the build with "unknown architecture" from tapi.
 const NATIVE_ENV = {
