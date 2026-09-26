@@ -242,8 +242,8 @@ struct Device: Identifiable, Hashable {
 
 struct Bot: Identifiable, Hashable {
     enum Harness: String, CaseIterable {
-        case lorca, codex
-        var title: String { self == .codex ? "Codex" : "Lorca" }
+        case lorca, codex, claude
+        var title: String { switch self { case .lorca: "Lorca"; case .codex: "Codex"; case .claude: "Claude" } }
     }
     let id: String
     var name: String
@@ -255,7 +255,7 @@ struct Bot: Identifiable, Hashable {
     var provider: ProviderCredential.Kind
     var harness: Harness = .lorca
     var codexOptions: CodexOptions = .init()
-    var runtimeLabel: String { harness == .codex ? "Codex" : provider.rawValue }
+    var runtimeLabel: String { harness == .lorca ? provider.rawValue : harness.title }
     /// nil means the provider's default model.
     var model: String? = nil
     /// How much the model thinks; nil means the provider's default.

@@ -738,6 +738,15 @@ final class AppStore {
                                "codex_options": selection.options.params])
     }
 
+    func setClaudeOptions(_ id: Bot.ID, selection: ClaudeSelection) {
+        guard let index = bots.firstIndex(where: { $0.id == id }) else { return }
+        bots[index].model = selection.model
+        bots[index].thinking = selection.thinking
+        emit(.rosterChanged)
+        for chat in chats where chat.botIDs.contains(id) { emit(.chatChanged(chat.id)) }
+        perform("bots.update", ["id": id, "model": selection.model ?? "", "thinking": selection.thinking ?? ""])
+    }
+
     /// Provider, model, and thinking level a bot runs with. nil means the provider's default.
     func setBotRuntime(_ id: Bot.ID, provider: ProviderCredential.Kind, model: String?, thinking: String?) {
         guard let index = bots.firstIndex(where: { $0.id == id }) else { return }

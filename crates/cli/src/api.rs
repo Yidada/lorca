@@ -22,7 +22,7 @@ fn opt_string(params: &Value, key: &str) -> Option<String> {
 
 fn harness(params: &Value) -> Result<Option<Harness>, String> {
     params.get("harness").map(|value| serde_json::from_value(value.clone())
-        .map_err(|_| "harness must be lorca or codex".to_string())).transpose()
+        .map_err(|_| "harness must be lorca, codex, or claude".to_string())).transpose()
 }
 
 fn codex_options(params: &Value) -> Result<Option<CodexOptions>, String> {

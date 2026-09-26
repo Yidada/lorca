@@ -3,3 +3,6 @@
 "Runtime" = "Runtime";
 
 "Uses Codex's login, model, tools, and permissions on this Runner. Install Codex and run codex login there first." = "Uses Codex's login, model, tools, and permissions on this Runner. Install Codex and run codex login there first.";
+
+"Runner default" = "Runner default";
+"Uses Claude Code on this Runner. Sign in there first. Available models and thinking levels depend on its version and account." = "Uses Claude Code on this Runner. Sign in there first. Available models and thinking levels depend on its version and account.";

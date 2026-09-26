@@ -21,6 +21,12 @@ pub struct CodexSession {
     pub after_message_id: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClaudeSession {
+    pub session_id: String,
+    pub after_message_id: Option<String>,
+}
+
 pub struct Upsert {
     pub previous: Option<Message>,
     pub changed: bool,
@@ -99,6 +105,14 @@ impl LocalStore {
                  bot_id TEXT NOT NULL,
                  workdir TEXT NOT NULL,
                  thread_id TEXT NOT NULL,
+                 after_message_id TEXT,
+                 PRIMARY KEY (chat_id, bot_id, workdir)
+             );
+             CREATE TABLE IF NOT EXISTS claude_sessions (
+                 chat_id TEXT NOT NULL,
+                 bot_id TEXT NOT NULL,
+                 workdir TEXT NOT NULL,
+                 session_id TEXT NOT NULL,
                  after_message_id TEXT,
                  PRIMARY KEY (chat_id, bot_id, workdir)
              );
@@ -212,6 +226,7 @@ impl LocalStore {
             tx.execute("DELETE FROM messages WHERE chat_id = ?1", [chat_id])?;
             tx.execute("DELETE FROM chat_history WHERE chat_id = ?1", [chat_id])?;
             tx.execute("DELETE FROM codex_sessions WHERE chat_id = ?1", [chat_id])?;
+            tx.execute("DELETE FROM claude_sessions WHERE chat_id = ?1", [chat_id])?;
             tx.execute(
                 "DELETE FROM outbox WHERE group_name = ?1",
                 [crate::model::relay_name(chat_id)],
@@ -927,6 +942,29 @@ impl LocalStore {
         Ok(())
     }
 
+    /// Claude threads are local to the Runner and workspace. The relay syncs the chat view.
+    pub fn claude_session(&self, chat_id: &str, bot_id: &str, workdir: &str) -> anyhow::Result<Option<ClaudeSession>> {
+        Ok(self.connection.lock().unwrap().query_row(
+            "SELECT session_id, after_message_id FROM claude_sessions WHERE chat_id = ?1 AND bot_id = ?2 AND workdir = ?3",
+            params![chat_id, bot_id, workdir],
+            |row| Ok(ClaudeSession { session_id: row.get(0)?, after_message_id: row.get(1)? }),
+        ).optional()?)
+    }
+
+    pub fn save_claude_session(&self, chat_id: &str, bot_id: &str, workdir: &str, session: &ClaudeSession) -> anyhow::Result<()> {
+        self.connection.lock().unwrap().execute(
+            "INSERT INTO claude_sessions (chat_id, bot_id, workdir, session_id, after_message_id) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(chat_id, bot_id, workdir) DO UPDATE SET session_id = excluded.session_id, after_message_id = excluded.after_message_id",
+            params![chat_id, bot_id, workdir, session.session_id, session.after_message_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn clear_claude_sessions(&self, chat_id: &str, bot_id: &str) -> anyhow::Result<()> {
+        self.connection.lock().unwrap().execute("DELETE FROM claude_sessions WHERE chat_id = ?1 AND bot_id = ?2", params![chat_id, bot_id])?;
+        Ok(())
+    }
+
     pub fn clear(&self) -> anyhow::Result<()> {
         let mut connection = self.connection.lock().unwrap();
         let tx = connection.transaction()?;
@@ -943,6 +981,7 @@ impl LocalStore {
             "messages",
             "chat_history",
             "codex_sessions",
+            "claude_sessions",
             "outbox",
             "sent_jobs",
             "device_turns",
@@ -1018,6 +1057,7 @@ fn save_state_tx(tx: &Transaction<'_>, state: &State) -> anyhow::Result<()> {
     )?;
     sync_chats(tx, state)?;
     tx.execute("DELETE FROM codex_sessions WHERE chat_id NOT IN (SELECT id FROM chats) OR bot_id NOT IN (SELECT id FROM bots)", [])?;
+    tx.execute("DELETE FROM claude_sessions WHERE chat_id NOT IN (SELECT id FROM chats) OR bot_id NOT IN (SELECT id FROM bots)", [])?;
     sync_json_table(
         tx,
         "routines",

@@ -73,7 +73,7 @@ export interface Bot {
   avatar?: Attachment;
   runner_id: string;
   provider: string;
-  harness?: "lorca" | "codex";
+  harness?: "lorca" | "codex" | "claude";
   codex_options?: CodexOptions;
   model?: string;
   /** How much the model thinks: off, minimal, low, medium, high, xhigh, max. */

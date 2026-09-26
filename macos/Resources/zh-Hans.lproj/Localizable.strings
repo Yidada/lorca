@@ -698,3 +698,6 @@
 "Loading models…" = "正在加载模型…";
 
 "Reload models" = "刷新模型";
+
+"Runner default" = "Runner 默认设置";
+"Uses Claude Code on this Runner. Sign in there first. Available models and thinking levels depend on its version and account." = "使用此 Runner 上的 Claude Code，请先在那里登录。可用模型和思考级别取决于其版本及账号。";
